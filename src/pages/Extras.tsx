@@ -3,7 +3,6 @@ import { useSearchParams, Link } from "react-router-dom";
 import { Section, PageHeader } from "../components/ui";
 import { RecordModal, type Field } from "../components/RecordModal";
 import { useStore } from "../store";
-import { insurance as insSeed } from "../data";
 import { useExchangeRate, fmtRate100 } from "../lib/fx";
 import { buildShareUrl } from "../lib/share";
 import { SyncPanel } from "../components/SyncPanel";
@@ -291,16 +290,40 @@ const insFields: Field[] = [
 ];
 
 function Insurance() {
-  const { insurers, addInsurer, updateInsurer, removeInsurer } = useStore();
+  const { insurers, addInsurer, updateInsurer, removeInsurer, insuranceInfo, updateInsuranceInfo } = useStore();
   const [modal, setModal] = useState<null | { i: number | null }>(null);
+  const [editInfo, setEditInfo] = useState(false);
+  const setCp = (i: number, v: string) => updateInsuranceInfo({ checkpoints: insuranceInfo.checkpoints.map((c, j) => (j === i ? v : c)) });
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div className="card" style={{ padding: 16 }}>
-        <div className="muted" style={{ fontSize: 13 }}>{insSeed.condition}</div>
-        <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 13.5, lineHeight: 1.7 }}>
-          {insSeed.checkpoints.map((c: string, i: number) => <li key={i}>{c}</li>)}
-        </ul>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 6 }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => setEditInfo((v) => !v)}>{editInfo ? "✓ 완료" : "✎ 안내문구 편집"}</button>
+        </div>
+        {editInfo ? (
+          <>
+            <label>여행 조건</label>
+            <textarea rows={2} value={insuranceInfo.condition} onChange={(e) => updateInsuranceInfo({ condition: e.target.value })} style={{ margin: "4px 0 10px", resize: "vertical" }} />
+            <label>체크포인트</label>
+            <div style={{ display: "grid", gap: 6, marginTop: 4 }}>
+              {insuranceInfo.checkpoints.map((c, i) => (
+                <div key={i} style={{ display: "flex", gap: 6 }}>
+                  <input value={c} onChange={(e) => setCp(i, e.target.value)} style={{ fontSize: 13 }} />
+                  <button className="btn btn-ghost btn-sm btn-danger" onClick={() => updateInsuranceInfo({ checkpoints: insuranceInfo.checkpoints.filter((_, j) => j !== i) })}>×</button>
+                </div>
+              ))}
+              <button className="btn btn-sm" onClick={() => updateInsuranceInfo({ checkpoints: [...insuranceInfo.checkpoints, ""] })}>＋ 체크포인트</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="muted" style={{ fontSize: 13 }}>{insuranceInfo.condition}</div>
+            <ul style={{ margin: "10px 0 0", paddingLeft: 18, fontSize: 13.5, lineHeight: 1.7 }}>
+              {insuranceInfo.checkpoints.map((c, i) => <li key={i}>{c}</li>)}
+            </ul>
+          </>
+        )}
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={{ fontSize: 16, margin: 0 }}>보험사 비교 <span className="chip chip-muted">{insurers.length}</span></h3>
@@ -325,7 +348,9 @@ function Insurance() {
       </div>
       <div className="card" style={{ padding: 16, background: "var(--accent-soft)", borderColor: "var(--accent)" }}>
         <strong>✓ 권장</strong>
-        <div style={{ fontSize: 13.5, marginTop: 6 }}>{insSeed.recommend}</div>
+        {editInfo
+          ? <textarea rows={3} value={insuranceInfo.recommend} onChange={(e) => updateInsuranceInfo({ recommend: e.target.value })} style={{ marginTop: 6, resize: "vertical" }} />
+          : <div style={{ fontSize: 13.5, marginTop: 6 }}>{insuranceInfo.recommend}</div>}
       </div>
 
       {modal && (
@@ -354,8 +379,8 @@ function Backup() {
   }
 
   function exportJson() {
-    const { trip, bookmarks, shopping, expenses, checked, itinerary, packing, budgetFixed, budgetCats, tours, insurers, places } = store;
-    const data = { trip, bookmarks, shopping, expenses, checked, itinerary, packing, budgetFixed, budgetCats, tours, insurers, places, exportedAt: new Date().toISOString() };
+    const { trip, bookmarks, shopping, expenses, checked, itinerary, packing, budgetFixed, budgetCats, tours, insurers, places, videos, buyLocal, insuranceInfo } = store;
+    const data = { trip, bookmarks, shopping, expenses, checked, itinerary, packing, budgetFixed, budgetCats, tours, insurers, places, videos, buyLocal, insuranceInfo, exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);

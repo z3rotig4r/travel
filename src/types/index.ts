@@ -99,6 +99,8 @@ export interface TourItem {
   pros: string; cons: string; url: string;
 }
 export interface Insurer { name: string; limit: string; fee: string; note: string; url: string }
+export interface BuyLocalItem { item: string; desc: string; where: string }
+export interface InsuranceInfo { condition: string; checkpoints: string[]; recommend: string }
 
 // 쇼핑 리스트 항목
 export interface ShoppingItem {

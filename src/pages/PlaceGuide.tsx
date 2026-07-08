@@ -4,7 +4,6 @@ import { YouTubePlayer, type PlayerHandle } from "../components/YouTubePlayer";
 import { ImageUploader } from "../components/ImageUploader";
 import { ImageThumb } from "../components/ImageThumb";
 import { useStore } from "../store";
-import { videos } from "../data";
 import { parseYouTubeId, parseStartSeconds, fmtTime, thumbUrl, watchAt } from "../lib/youtube";
 import { screenCapture } from "../lib/screencap";
 import { putImage } from "../lib/db";
@@ -17,6 +16,9 @@ export function PlaceGuide() {
   const addBookmark = useStore((s) => s.addBookmark);
   const updateBookmark = useStore((s) => s.updateBookmark);
   const removeBookmark = useStore((s) => s.removeBookmark);
+  const videos = useStore((s) => s.videos);
+  const addVideo = useStore((s) => s.addVideo);
+  const removeVideo = useStore((s) => s.removeVideo);
 
   const [videoId, setVideoId] = useState<string>(videos[0]?.videoId ?? "");
   const [videoTitle, setVideoTitle] = useState<string>(videos[0]?.title ?? "");
@@ -103,14 +105,20 @@ export function PlaceGuide() {
             value={urlInput} onChange={(e) => setUrlInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && loadUrl()} style={{ flex: 1, minWidth: 220 }} />
           <button className="btn btn-primary" onClick={loadUrl}>영상 불러오기</button>
+          {videoId && !videos.some((v) => v.videoId === videoId) && (
+            <button className="btn" onClick={() => addVideo({ title: videoTitle || videoId, videoId })}>⭐ 추천에 추가</button>
+          )}
         </div>
         {videos.length > 0 && (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-            <span className="muted" style={{ fontSize: 12, alignSelf: "center" }}>추천 영상:</span>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12, alignItems: "center" }}>
+            <span className="muted" style={{ fontSize: 12 }}>추천 영상:</span>
             {videos.map((v) => (
-              <button key={v.id} className="btn btn-sm" onClick={() => { setVideoId(v.videoId); setVideoTitle(v.title); setStart(0); }}>
-                ▶︎ {v.title}
-              </button>
+              <span key={v.id} style={{ display: "inline-flex", alignItems: "center", border: "1px solid var(--line-strong)", borderRadius: 999, overflow: "hidden" }}>
+                <button className="btn btn-sm" style={{ border: "none", borderRadius: 0 }}
+                  onClick={() => { setVideoId(v.videoId); setVideoTitle(v.title); setStart(0); }}>▶︎ {v.title}</button>
+                <button className="btn btn-ghost btn-sm btn-danger" style={{ borderRadius: 0, padding: "5px 8px" }}
+                  title="추천에서 제거" onClick={() => removeVideo(v.id)}>✕</button>
+              </span>
             ))}
           </div>
         )}

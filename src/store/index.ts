@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Bookmark, ShoppingItem, Day, Block, BudgetFixed, BudgetCat, TourItem, Insurer, ExpenseEntry, Place, Trip } from "../types";
+import type { Bookmark, ShoppingItem, Day, Block, BudgetFixed, BudgetCat, TourItem, Insurer, ExpenseEntry, Place, Trip, Video, BuyLocalItem, InsuranceInfo } from "../types";
 import { deleteImage } from "../lib/db";
 import * as seed from "../data";
 
@@ -34,6 +34,9 @@ interface State {
   tours: Tours;
   insurers: Insurer[];
   places: Place[];
+  videos: Video[];
+  buyLocal: BuyLocalItem[];
+  insuranceInfo: InsuranceInfo;
 
   // --- bookmarks ---
   addBookmark: (b: Omit<Bookmark, "id" | "createdAt">) => void;
@@ -58,6 +61,14 @@ interface State {
 
   // --- trip meta ---
   updateTrip: (patch: Partial<Trip>) => void;
+
+  // --- videos / buyLocal / insuranceInfo ---
+  addVideo: (v: Omit<Video, "id">) => void;
+  removeVideo: (id: string) => void;
+  addBuyLocal: (x: BuyLocalItem) => void;
+  updateBuyLocal: (i: number, patch: Partial<BuyLocalItem>) => void;
+  removeBuyLocal: (i: number) => void;
+  updateInsuranceInfo: (patch: Partial<InsuranceInfo>) => void;
 
   // --- packing ---
   toggleCheck: (key: string) => void;
@@ -100,7 +111,7 @@ interface State {
   resetSeed: () => void;
 }
 
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
 const seededDefaults = () => ({
   seededVersion: SEED_VERSION,
   trip: clone(seed.trip) as Trip,
@@ -111,6 +122,13 @@ const seededDefaults = () => ({
   tours: clone(seed.tours) as Tours,
   insurers: clone(seed.insurance.companies) as Insurer[],
   places: clone(seed.allPlaces) as Place[],
+  videos: clone(seed.videos) as Video[],
+  buyLocal: clone(seed.shopping.buyLocal) as BuyLocalItem[],
+  insuranceInfo: {
+    condition: seed.insurance.condition,
+    checkpoints: clone(seed.insurance.checkpoints) as string[],
+    recommend: seed.insurance.recommend,
+  } as InsuranceInfo,
 });
 
 export const useStore = create<State>()(
@@ -168,6 +186,13 @@ export const useStore = create<State>()(
         set((s) => ({ places: s.places.filter((x) => x.id !== id) })),
 
       updateTrip: (patch) => set((s) => ({ trip: { ...s.trip, ...patch } })),
+
+      addVideo: (v) => set((s) => ({ videos: [...s.videos, { ...v, id: "vid-" + uid() }] })),
+      removeVideo: (id) => set((s) => ({ videos: s.videos.filter((x) => x.id !== id) })),
+      addBuyLocal: (x) => set((s) => ({ buyLocal: [...s.buyLocal, x] })),
+      updateBuyLocal: (i, patch) => set((s) => ({ buyLocal: s.buyLocal.map((r, j) => (j === i ? { ...r, ...patch } : r)) })),
+      removeBuyLocal: (i) => set((s) => ({ buyLocal: s.buyLocal.filter((_, j) => j !== i) })),
+      updateInsuranceInfo: (patch) => set((s) => ({ insuranceInfo: { ...s.insuranceInfo, ...patch } })),
 
       toggleCheck: (key) => set((s) => ({ checked: { ...s.checked, [key]: !s.checked[key] } })),
       addPackingItem: (cat, item) =>
@@ -237,6 +262,9 @@ export const useStore = create<State>()(
           budgetCats: data.budgetCats ?? s.budgetCats,
           tours: data.tours ?? s.tours,
           insurers: data.insurers ?? s.insurers,
+          videos: data.videos ?? s.videos,
+          buyLocal: data.buyLocal ?? s.buyLocal,
+          insuranceInfo: data.insuranceInfo ?? s.insuranceInfo,
         })),
       resetSeed: () => set({ ...seededDefaults() }),
     }),
@@ -255,7 +283,10 @@ export const useStore = create<State>()(
             budgetCats: persisted.budgetCats ?? d.budgetCats,
             tours: persisted.tours ?? d.tours,
             insurers: persisted.insurers ?? d.insurers,
-            places: persisted.places ?? d.places };
+            places: persisted.places ?? d.places,
+            videos: persisted.videos ?? d.videos,
+            buyLocal: persisted.buyLocal ?? d.buyLocal,
+            insuranceInfo: persisted.insuranceInfo ?? d.insuranceInfo };
         }
         return persisted;
       },

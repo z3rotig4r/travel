@@ -3,9 +3,15 @@ import { Section, PageHeader, EmptyNote } from "../components/ui";
 import { ImageUploader } from "../components/ImageUploader";
 import { ImageThumb } from "../components/ImageThumb";
 import { useStore } from "../store";
-import { shopping } from "../data";
+import { RecordModal, type Field } from "../components/RecordModal";
 import { parseYouTubeId, thumbUrl } from "../lib/youtube";
-import type { ShoppingItem } from "../types";
+import type { ShoppingItem, BuyLocalItem } from "../types";
+
+const buyFields: Field[] = [
+  { key: "item", label: "품목" },
+  { key: "where", label: "구매 장소" },
+  { key: "desc", label: "설명", type: "textarea" },
+];
 
 // 업로드 이미지 우선, 없으면 유튜브 출처면 썸네일 표시
 function ItemImage({ it, style }: { it: ShoppingItem; style: React.CSSProperties }) {
@@ -31,6 +37,11 @@ export function Shopping() {
   const update = useStore((s) => s.updateShopping);
   const remove = useStore((s) => s.removeShopping);
   const toggle = useStore((s) => s.toggleBought);
+  const buyLocal = useStore((s) => s.buyLocal);
+  const addBuyLocal = useStore((s) => s.addBuyLocal);
+  const updateBuyLocal = useStore((s) => s.updateBuyLocal);
+  const removeBuyLocal = useStore((s) => s.removeBuyLocal);
+  const [buyModal, setBuyModal] = useState<null | { i: number | null }>(null);
 
   const [open, setOpen] = useState(false);
   const [f, setF] = useState<{ name: string; memo: string; sourceUrl: string; price: string; imageId?: string }>(
@@ -112,20 +123,37 @@ export function Shopping() {
             ))}
           </div>}
 
-      {/* 추천 물품 (시드) */}
-      <h2 style={{ fontSize: 20, margin: "34px 0 6px" }}>현지에서 사면 좋은 것</h2>
-      <p className="muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 14 }}>계획표 기반 추천 — 카드를 눌러 위시리스트에 담을 수 있어요.</p>
+      {/* 추천 물품 (편집 가능) */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "34px 0 6px" }}>
+        <h2 style={{ fontSize: 20, margin: 0 }}>현지에서 사면 좋은 것</h2>
+        <button className="btn btn-sm btn-primary" onClick={() => setBuyModal({ i: null })}>＋ 추천물품 추가</button>
+      </div>
+      <p className="muted" style={{ fontSize: 13, marginTop: 0, marginBottom: 14 }}>카드를 눌러 위시리스트에 담거나, 직접 추가·편집·삭제할 수 있어요.</p>
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
-        {shopping.buyLocal.map((b: any, i: number) => (
+        {buyLocal.map((b, i) => (
           <div key={i} className="card" style={{ padding: 14 }}>
             <div style={{ fontWeight: 600, fontSize: 15 }}>{b.item}</div>
             <div className="soft" style={{ fontSize: 13, marginTop: 4 }}>{b.desc}</div>
-            <div className="chip chip-muted" style={{ fontSize: 11, marginTop: 8 }}>🏬 {b.where}</div>
-            <button className="btn btn-sm" style={{ marginTop: 10 }}
-              onClick={() => add({ name: b.item, memo: `${b.desc}`, price: b.where })}>＋ 위시에 담기</button>
+            {b.where && <div className="chip chip-muted" style={{ fontSize: 11, marginTop: 8 }}>🏬 {b.where}</div>}
+            <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+              <button className="btn btn-sm" onClick={() => add({ name: b.item, memo: b.desc, price: b.where })}>＋ 위시</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setBuyModal({ i })}>✎</button>
+              <button className="btn btn-ghost btn-sm btn-danger" style={{ marginLeft: "auto" }} onClick={() => removeBuyLocal(i)}>삭제</button>
+            </div>
           </div>
         ))}
       </div>
+
+      {buyModal && (
+        <RecordModal title={buyModal.i === null ? "추천물품 추가" : "추천물품 수정"} fields={buyFields}
+          initial={buyModal.i === null ? { item: "", where: "", desc: "" } : buyLocal[buyModal.i]}
+          onClose={() => setBuyModal(null)}
+          onSave={(rec) => {
+            const row = rec as BuyLocalItem;
+            if (buyModal.i === null) addBuyLocal(row); else updateBuyLocal(buyModal.i, row);
+            setBuyModal(null);
+          }} />
+      )}
     </Section>
   );
 }

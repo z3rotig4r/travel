@@ -6,6 +6,7 @@ import { useStore } from "../store";
 import { insurance as insSeed } from "../data";
 import { useExchangeRate, fmtRate100 } from "../lib/fx";
 import { buildShareUrl } from "../lib/share";
+import { SyncPanel } from "../components/SyncPanel";
 import type { BudgetFixed, TourItem, Insurer } from "../types";
 
 const won = (n: number) => (n || 0).toLocaleString("ko-KR") + "원";
@@ -14,6 +15,7 @@ const TABS = [
   { id: "budget", label: "💰 경비" },
   { id: "tours", label: "🚌 버스투어" },
   { id: "insurance", label: "🛡️ 보험" },
+  { id: "sync", label: "🔄 공유" },
   { id: "backup", label: "💾 백업" },
 ];
 
@@ -40,6 +42,7 @@ export function Extras() {
         {tab === "budget" && <Budget />}
         {tab === "tours" && <Tours />}
         {tab === "insurance" && <Insurance />}
+        {tab === "sync" && <SyncPanel />}
         {tab === "backup" && <Backup />}
       </div>
     </Section>

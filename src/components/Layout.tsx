@@ -2,6 +2,12 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useStore } from "../store";
 import { readShareFromHash } from "../lib/share";
+import { isConfigured } from "../lib/supabase";
+import { startSync } from "../lib/sync";
+
+const SYNC_DOT: Record<string, string> = {
+  online: "var(--accent-2)", syncing: "var(--gold)", offline: "var(--ink-faint)", error: "var(--danger)", off: "transparent",
+};
 
 const NAV = [
   { to: "/today", label: "오늘", icon: "📍" },
@@ -26,8 +32,26 @@ export function Layout() {
   const theme = useStore((s) => s.theme);
   const setTheme = useStore((s) => s.setTheme);
   const importState = useStore((s) => s.importState);
+  const roomId = useStore((s) => s.roomId);
+  const syncStatus = useStore((s) => s.syncStatus);
   const loc = useLocation();
   const [shareData, setShareData] = useState<Record<string, any> | null>(null);
+
+  // 실시간 공유 초기화: ?room=CODE 로 참여하거나, 저장된 방 자동 재연결
+  useEffect(() => {
+    if (!isConfigured) return;
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get("room");
+    if (room) {
+      startSync(room);
+      params.delete("room");
+      const qs = params.toString();
+      history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+    } else if (useStore.getState().roomId) {
+      startSync(useStore.getState().roomId!);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -82,6 +106,15 @@ export function Layout() {
               </NavLink>
             ))}
           </nav>
+          {roomId && (
+            <NavLink to="/extras?tab=sync" title={`실시간 공유: ${syncStatus}`}
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, textDecoration: "none",
+                fontSize: 12, fontWeight: 600, color: "var(--ink-soft)", padding: "5px 9px",
+                border: "1px solid var(--line)", borderRadius: 999 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 999, background: SYNC_DOT[syncStatus] || "transparent" }} />
+              <span className="nav-label">공유</span>
+            </NavLink>
+          )}
           <button className="btn btn-ghost btn-sm" onClick={() => setTheme(theme === "light" ? "dark" : "light")}
             title="테마 전환" aria-label="테마 전환">
             {theme === "light" ? "🌙" : "☀️"}

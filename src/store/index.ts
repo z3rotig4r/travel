@@ -17,6 +17,13 @@ interface State {
   checked: Record<string, boolean>;
   theme: "light" | "dark";
 
+  // 실시간 공유(Supabase)
+  roomId: string | null;
+  syncName: string;
+  syncStatus: "off" | "online" | "offline" | "syncing" | "error";
+  lastSyncedAt: number;
+  lastSyncedBy: string;
+
   // 편집 가능한 시드 컬렉션 (첫 실행 시 seed에서 채움)
   seededVersion: number;
   itinerary: Day[];
@@ -72,6 +79,11 @@ interface State {
   updateInsurer: (i: number, patch: Partial<Insurer>) => void;
   removeInsurer: (i: number) => void;
 
+  // --- sync ---
+  setRoom: (id: string | null) => void;
+  setSyncName: (name: string) => void;
+  setSyncStatus: (s: State["syncStatus"], at?: number, by?: string) => void;
+
   // --- misc ---
   setTheme: (t: "light" | "dark") => void;
   importState: (data: any) => void;
@@ -97,6 +109,11 @@ export const useStore = create<State>()(
       expenses: [],
       checked: {},
       theme: "light",
+      roomId: null,
+      syncName: "",
+      syncStatus: "off",
+      lastSyncedAt: 0,
+      lastSyncedBy: "",
       ...seededDefaults(),
 
       addBookmark: (b) =>
@@ -177,9 +194,13 @@ export const useStore = create<State>()(
         set((s) => ({ insurers: s.insurers.map((r, j) => (j === i ? { ...r, ...patch } : r)) })),
       removeInsurer: (i) => set((s) => ({ insurers: s.insurers.filter((_, j) => j !== i) })),
 
+      setRoom: (id) => set({ roomId: id }),
+      setSyncName: (name) => set({ syncName: name }),
+      setSyncStatus: (s, at, by) => set((st) => ({ syncStatus: s, lastSyncedAt: at ?? st.lastSyncedAt, lastSyncedBy: by ?? st.lastSyncedBy })),
+
       setTheme: (t) => set({ theme: t }),
       importState: (data) =>
-        set((s) => ({
+        set((s) => !data || typeof data !== "object" ? {} : ({
           bookmarks: data.bookmarks ?? s.bookmarks,
           shopping: data.shopping ?? s.shopping,
           expenses: data.expenses ?? s.expenses,

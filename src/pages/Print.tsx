@@ -1,11 +1,10 @@
 import { Section } from "../components/ui";
 import { useStore } from "../store";
-import { trip } from "../data";
 
 const won = (n: number) => Math.round(n).toLocaleString("ko-KR") + "원";
 
 export function Print() {
-  const { itinerary, shopping, packing } = useStore();
+  const { itinerary, shopping, packing, trip } = useStore();
 
   return (
     <Section style={{ paddingTop: 24 }}>

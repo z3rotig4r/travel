@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { Section } from "../components/ui";
-import { trip, budget } from "../data";
 import { useStore } from "../store";
 import { useExchangeRate, fmtRate100 } from "../lib/fx";
 import { useWeather } from "../lib/weather";
@@ -11,6 +10,8 @@ const won = (n: number) => n.toLocaleString("ko-KR") + "원";
 
 export function Dashboard() {
   const itinerary = useStore((s) => s.itinerary);
+  const trip = useStore((s) => s.trip);
+  const budgetCats = useStore((s) => s.budgetCats);
   const fx = useExchangeRate();
   const weather = useWeather();
   const rateWhen = fx.updatedAt ? new Date(fx.updatedAt).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
@@ -99,7 +100,7 @@ export function Dashboard() {
             <Link className="btn btn-sm" to="/extras?tab=budget">경비 자세히 →</Link>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {budget.categorySummary.map((c: any) => (
+            {budgetCats.map((c: any) => (
               <div key={c.cat} className="chip chip-muted" style={{ fontSize: 13 }}>
                 {c.cat} · {won(c.krw)}
               </div>

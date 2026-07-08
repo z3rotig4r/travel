@@ -4,8 +4,8 @@ import { useStore } from "../store";
 
 // 동기화 대상 슬라이스 (이미지 blob·theme·sync 메타는 제외)
 const SYNC_KEYS = [
-  "itinerary", "packing", "budgetFixed", "budgetCats", "tours",
-  "insurers", "shopping", "bookmarks", "expenses", "checked",
+  "trip", "itinerary", "packing", "budgetFixed", "budgetCats", "tours",
+  "insurers", "places", "shopping", "bookmarks", "expenses", "checked",
 ] as const;
 
 function pickSynced(s: any): Record<string, any> {

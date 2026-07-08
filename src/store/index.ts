@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Bookmark, ShoppingItem, Day, Block, BudgetFixed, BudgetCat, TourItem, Insurer, ExpenseEntry } from "../types";
+import type { Bookmark, ShoppingItem, Day, Block, BudgetFixed, BudgetCat, TourItem, Insurer, ExpenseEntry, Place, Trip } from "../types";
 import { deleteImage } from "../lib/db";
 import * as seed from "../data";
 
@@ -26,12 +26,14 @@ interface State {
 
   // 편집 가능한 시드 컬렉션 (첫 실행 시 seed에서 채움)
   seededVersion: number;
+  trip: Trip;
   itinerary: Day[];
   packing: Record<string, string[]>;
   budgetFixed: BudgetFixed[];
   budgetCats: BudgetCat[];
   tours: Tours;
   insurers: Insurer[];
+  places: Place[];
 
   // --- bookmarks ---
   addBookmark: (b: Omit<Bookmark, "id" | "createdAt">) => void;
@@ -48,6 +50,14 @@ interface State {
   addExpense: (e: Omit<ExpenseEntry, "id" | "createdAt">) => void;
   updateExpense: (id: string, patch: Partial<ExpenseEntry>) => void;
   removeExpense: (id: string) => void;
+
+  // --- places (시드 마커 + 사용자 등록) ---
+  addPlace: (p: Omit<Place, "id">) => string;
+  updatePlace: (id: string, patch: Partial<Place>) => void;
+  removePlace: (id: string) => void;
+
+  // --- trip meta ---
+  updateTrip: (patch: Partial<Trip>) => void;
 
   // --- packing ---
   toggleCheck: (key: string) => void;
@@ -90,15 +100,17 @@ interface State {
   resetSeed: () => void;
 }
 
-const SEED_VERSION = 1;
+const SEED_VERSION = 2;
 const seededDefaults = () => ({
   seededVersion: SEED_VERSION,
+  trip: clone(seed.trip) as Trip,
   itinerary: clone(seed.itinerary),
   packing: clone(seed.packing),
   budgetFixed: clone(seed.budget.fixed) as BudgetFixed[],
   budgetCats: clone(seed.budget.categorySummary) as BudgetCat[],
   tours: clone(seed.tours) as Tours,
   insurers: clone(seed.insurance.companies) as Insurer[],
+  places: clone(seed.allPlaces) as Place[],
 });
 
 export const useStore = create<State>()(
@@ -144,6 +156,18 @@ export const useStore = create<State>()(
         set((s) => ({ expenses: s.expenses.map((x) => (x.id === id ? { ...x, ...patch } : x)) })),
       removeExpense: (id) =>
         set((s) => ({ expenses: s.expenses.filter((x) => x.id !== id) })),
+
+      addPlace: (p) => {
+        const id = "usr-" + uid();
+        set((s) => ({ places: [...s.places, { ...p, id, custom: true }] }));
+        return id;
+      },
+      updatePlace: (id, patch) =>
+        set((s) => ({ places: s.places.map((x) => (x.id === id ? { ...x, ...patch } : x)) })),
+      removePlace: (id) =>
+        set((s) => ({ places: s.places.filter((x) => x.id !== id) })),
+
+      updateTrip: (patch) => set((s) => ({ trip: { ...s.trip, ...patch } })),
 
       toggleCheck: (key) => set((s) => ({ checked: { ...s.checked, [key]: !s.checked[key] } })),
       addPackingItem: (cat, item) =>
@@ -205,6 +229,8 @@ export const useStore = create<State>()(
           shopping: data.shopping ?? s.shopping,
           expenses: data.expenses ?? s.expenses,
           checked: data.checked ?? s.checked,
+          trip: data.trip ?? s.trip,
+          places: data.places ?? s.places,
           itinerary: data.itinerary ?? s.itinerary,
           packing: data.packing ?? s.packing,
           budgetFixed: data.budgetFixed ?? s.budgetFixed,
@@ -220,13 +246,16 @@ export const useStore = create<State>()(
       migrate: (persisted: any, _v) => {
         // 이전 버전(시드 컬렉션 없음) 호환: 누락 필드 채우기
         if (persisted && persisted.seededVersion !== SEED_VERSION) {
-          return { ...seededDefaults(), ...persisted, seededVersion: SEED_VERSION,
-            itinerary: persisted.itinerary ?? seededDefaults().itinerary,
-            packing: persisted.packing ?? seededDefaults().packing,
-            budgetFixed: persisted.budgetFixed ?? seededDefaults().budgetFixed,
-            budgetCats: persisted.budgetCats ?? seededDefaults().budgetCats,
-            tours: persisted.tours ?? seededDefaults().tours,
-            insurers: persisted.insurers ?? seededDefaults().insurers };
+          const d = seededDefaults();
+          return { ...d, ...persisted, seededVersion: SEED_VERSION,
+            trip: persisted.trip ?? d.trip,
+            itinerary: persisted.itinerary ?? d.itinerary,
+            packing: persisted.packing ?? d.packing,
+            budgetFixed: persisted.budgetFixed ?? d.budgetFixed,
+            budgetCats: persisted.budgetCats ?? d.budgetCats,
+            tours: persisted.tours ?? d.tours,
+            insurers: persisted.insurers ?? d.insurers,
+            places: persisted.places ?? d.places };
         }
         return persisted;
       },

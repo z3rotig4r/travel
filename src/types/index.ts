@@ -27,6 +27,8 @@ export interface Place {
   lat: number;
   lng: number;
   tag?: string;
+  custom?: boolean;   // 사용자가 앱에서 직접 등록한 장소
+  memo?: string;      // 사용자 메모
   // food-only
   foodType?: string;
   menu?: string;

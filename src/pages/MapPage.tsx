@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { Section, PageHeader } from "../components/ui";
-import { attractions, restaurants, trip } from "../data";
 import { useStore } from "../store";
 import { gmapDir, gmapSearch } from "../lib/maps";
+import { geocode, type GeoResult } from "../lib/geocode";
 import type { Place } from "../types";
 
 function numIcon(n: number) {
@@ -24,8 +24,9 @@ const ME_ICON = L.divIcon({
   iconSize: [0, 0], iconAnchor: [0, 0],
 });
 
-type Kind = "attraction" | "food" | "tour";
+type Kind = "attraction" | "food" | "tour" | "custom";
 function kindOf(p: Place): Kind {
+  if (p.custom) return "custom";
   if (p.tag === "tour") return "tour";
   return p.category === "food" ? "food" : "attraction";
 }
@@ -33,6 +34,7 @@ const KIND_META: Record<Kind, { label: string; color: string; emoji: string }> =
   attraction: { label: "관광지", color: "#d97757", emoji: "📍" },
   food: { label: "맛집", color: "#6a7f6a", emoji: "🍽️" },
   tour: { label: "투어 코스", color: "#c99a3f", emoji: "🚌" },
+  custom: { label: "내 장소", color: "#7c5cbf", emoji: "⭐" },
 };
 
 function pinIcon(kind: Kind, active = false) {
@@ -55,10 +57,13 @@ function Flyer({ target }: { target: Place | null }) {
   }, [target, map]);
   return null;
 }
-
-function FlyTo({ pos }: { pos: [number, number] }) {
+function FlyTo({ pos, zoom = 15 }: { pos: [number, number]; zoom?: number }) {
   const map = useMap();
-  useEffect(() => { map.flyTo(pos, 15, { duration: 0.8 }); }, [pos, map]);
+  useEffect(() => { map.flyTo(pos, zoom, { duration: 0.8 }); }, [pos, map, zoom]);
+  return null;
+}
+function ClickCatcher({ active, onPick }: { active: boolean; onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({ click(e) { if (active) onPick(e.latlng.lat, e.latlng.lng); } });
   return null;
 }
 
@@ -68,21 +73,33 @@ const HOTEL_ICON = L.divIcon({
   iconSize: [0, 0], iconAnchor: [0, 0],
 });
 
+interface Draft { id?: string; name: string; category: "attraction" | "food"; memo: string; lat: number; lng: number }
+
 export function MapPage() {
   const [params] = useSearchParams();
   const focusName = params.get("place");
   const itinerary = useStore((s) => s.itinerary);
-  const [filters, setFilters] = useState<Record<Kind, boolean>>({ attraction: true, food: true, tour: true });
+  const trip = useStore((s) => s.trip);
+  const all = useStore((s) => s.places);
+  const { addPlace, updatePlace, removePlace } = useStore();
+
+  const [filters, setFilters] = useState<Record<Kind, boolean>>({ attraction: true, food: true, tour: true, custom: true });
   const [selected, setSelected] = useState<Place | null>(null);
-  const [routeDay, setRouteDay] = useState(0); // 0 = 동선 끄기
+  const [routeDay, setRouteDay] = useState(0);
   const [myPos, setMyPos] = useState<[number, number] | null>(null);
   const [geoErr, setGeoErr] = useState("");
   const markerRefs = useRef<Record<string, L.Marker | null>>({});
 
-  const all = useMemo(() => [...attractions, ...restaurants], []);
+  // 장소 등록
+  const [addMode, setAddMode] = useState(false);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<GeoResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null);
+
   const visible = useMemo(() => all.filter((p) => filters[kindOf(p)]), [all, filters]);
 
-  // 선택 일차의 동선: 블록의 place를 좌표가 있는 장소와 매칭해 순서대로
   const routePlaces = useMemo(() => {
     if (!routeDay) return [] as Place[];
     const day = itinerary.find((d) => d.day === routeDay);
@@ -105,7 +122,36 @@ export function MapPage() {
     );
   }
 
-  // ?place= 로 진입 시 포커스
+  async function runSearch() {
+    if (!q.trim()) return;
+    setSearching(true);
+    setResults(await geocode(q));
+    setSearching(false);
+  }
+  function pickResult(r: GeoResult) {
+    setFlyTarget([r.lat, r.lng]);
+    const short = r.label.split(",")[0];
+    setDraft({ name: short, category: "food", memo: "", lat: r.lat, lng: r.lng });
+    setResults([]); setAddMode(false);
+  }
+  function onMapPick(lat: number, lng: number) {
+    setDraft({ name: "", category: "food", memo: "", lat, lng });
+    setAddMode(false);
+  }
+  function saveDraft() {
+    if (!draft) return;
+    if (!draft.name.trim()) { alert("장소 이름을 입력해 주세요."); return; }
+    if (draft.id) updatePlace(draft.id, { name: draft.name.trim(), category: draft.category, memo: draft.memo });
+    else addPlace({ name: draft.name.trim(), category: draft.category, memo: draft.memo, lat: draft.lat, lng: draft.lng, area: "내 장소" });
+    setDraft(null);
+  }
+  function editPlace(p: Place) {
+    setDraft({ id: p.id, name: p.name, category: p.category, memo: p.memo || p.note || "", lat: p.lat, lng: p.lng });
+  }
+  function delPlace(p: Place) {
+    if (confirm(`'${p.name}' 장소를 삭제할까요?`)) { removePlace(p.id); if (selected?.id === p.id) setSelected(null); }
+  }
+
   useEffect(() => {
     if (!focusName) return;
     const p = all.find((x) => x.name === focusName || x.name.includes(focusName));
@@ -115,23 +161,48 @@ export function MapPage() {
   useEffect(() => {
     if (selected) {
       const m = markerRefs.current[selected.id];
-      // 팝업 열기 (약간의 지연으로 flyTo 이후)
       const t = setTimeout(() => m?.openPopup(), 850);
       return () => clearTimeout(t);
     }
   }, [selected]);
 
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {};
+    all.forEach((p) => { const k = kindOf(p); c[k] = (c[k] || 0) + 1; });
+    return c;
+  }, [all]);
+
   return (
     <Section>
       <PageHeader eyebrow="지도" title="관광지 · 맛집 지도"
-        desc="마커를 눌러 정보를 보고, 구글맵 길찾기로 대중교통 경로를 확인하세요." />
+        desc="장소를 직접 등록·편집·삭제하고, 일정의 ‘연결 장소’에서 불러와 동선을 그릴 수 있어요." />
 
-      {/* Filters */}
+      {/* 검색 + 등록 */}
+      <div className="card" style={{ padding: 12, marginBottom: 12 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <input placeholder="장소·주소 검색 (예: 스미레 스스키노)" value={q}
+            onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && runSearch()}
+            style={{ flex: 1, minWidth: 200 }} />
+          <button className="btn" onClick={runSearch} disabled={searching}>{searching ? "검색 중…" : "🔍 검색"}</button>
+          <button className={"btn " + (addMode ? "btn-primary" : "")} onClick={() => { setAddMode((v) => !v); setResults([]); }}>
+            {addMode ? "지도를 탭하세요…" : "➕ 내 장소 추가"}
+          </button>
+        </div>
+        {results.length > 0 && (
+          <div style={{ marginTop: 8, display: "grid", gap: 4 }}>
+            {results.map((r, i) => (
+              <button key={i} className="card" style={{ textAlign: "left", padding: "8px 11px", cursor: "pointer", fontSize: 13 }}
+                onClick={() => pickResult(r)}>📍 {r.label}</button>
+            ))}
+          </div>
+        )}
+        {addMode && <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>지도에서 원하는 위치를 탭하면 등록 창이 열려요.</div>}
+      </div>
+
+      {/* Filters + 동선 + 내위치 */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
         {(Object.keys(KIND_META) as Kind[]).map((k) => {
-          const on = filters[k];
-          const m = KIND_META[k];
-          const count = all.filter((p) => kindOf(p) === k).length;
+          const on = filters[k]; const m = KIND_META[k];
           return (
             <button key={k} onClick={() => setFilters((f) => ({ ...f, [k]: !f[k] }))}
               style={{
@@ -141,13 +212,12 @@ export function MapPage() {
                 fontSize: 13.5, fontWeight: 600,
               }}>
               <span style={{ width: 9, height: 9, borderRadius: 999, background: on ? "#fff" : m.color }} />
-              {m.emoji} {m.label} <span style={{ opacity: 0.8 }}>{count}</span>
+              {m.emoji} {m.label} <span style={{ opacity: 0.8 }}>{counts[k] || 0}</span>
             </button>
           );
         })}
         <div style={{ width: 1, alignSelf: "stretch", background: "var(--line)", margin: "0 4px" }} />
-        <select value={routeDay} onChange={(e) => setRouteDay(+e.target.value)}
-          style={{ width: "auto", padding: "7px 12px", borderRadius: 999 }}>
+        <select value={routeDay} onChange={(e) => setRouteDay(+e.target.value)} style={{ width: "auto", padding: "7px 12px", borderRadius: 999 }}>
           <option value={0}>🧭 동선 보기 끄기</option>
           {itinerary.map((d) => <option key={d.day} value={d.day}>{d.day}일차 동선</option>)}
         </select>
@@ -155,13 +225,38 @@ export function MapPage() {
       </div>
       {geoErr && <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{geoErr}</div>}
 
+      {/* 등록/편집 폼 */}
+      {draft && (
+        <div className="card fade-up" style={{ padding: 16, marginBottom: 12, borderColor: "var(--accent)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <strong style={{ fontFamily: "var(--font-serif)" }}>{draft.id ? "장소 편집" : "새 장소 등록"}</strong>
+            <span className="muted" style={{ fontSize: 12 }}>{draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}</span>
+          </div>
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "2fr 1fr" }}>
+            <div><label>이름 *</label><input value={draft.name} placeholder="예: 스미레 미소라멘" onChange={(e) => setDraft({ ...draft, name: e.target.value })} style={{ marginTop: 4 }} /></div>
+            <div><label>분류</label>
+              <select value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value as any })} style={{ marginTop: 4 }}>
+                <option value="food">맛집</option>
+                <option value="attraction">관광지</option>
+              </select>
+            </div>
+          </div>
+          <label style={{ display: "block", marginTop: 10 }}>메모</label>
+          <textarea rows={2} value={draft.memo} onChange={(e) => setDraft({ ...draft, memo: e.target.value })} style={{ marginTop: 4, resize: "vertical" }} placeholder="가격·추천메뉴·팁" />
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <button className="btn btn-primary" onClick={saveDraft}>저장</button>
+            <button className="btn" onClick={() => setDraft(null)}>취소</button>
+            {draft.id && <button className="btn btn-danger" style={{ marginLeft: "auto" }} onClick={() => { const p = all.find((x) => x.id === draft.id); if (p) delPlace(p); setDraft(null); }}>삭제</button>}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 320px", gap: 16 }} className="map-grid">
         {/* Map */}
-        <div className="card" style={{ overflow: "hidden", height: 560 }}>
+        <div className="card" style={{ overflow: "hidden", height: 560, cursor: addMode ? "crosshair" : undefined }}>
           <MapContainer center={[43.062, 141.352]} zoom={13} style={{ height: "100%", width: "100%" }} scrollWheelZoom>
-            <TileLayer
-              attribution='&copy; OpenStreetMap'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <ClickCatcher active={addMode} onPick={onMapPick} />
             <Marker position={[trip.hotel.lat, trip.hotel.lng]} icon={HOTEL_ICON}>
               <Popup><b>🏨 {trip.hotel.name}</b><br />숙소 · {trip.hotel.zip}</Popup>
             </Marker>
@@ -170,19 +265,20 @@ export function MapPage() {
                 ref={(m) => { markerRefs.current[p.id] = m; }}
                 eventHandlers={{ click: () => setSelected(p) }}>
                 <Popup>
-                  <div style={{ minWidth: 170 }}>
+                  <div style={{ minWidth: 180 }}>
                     <b>{KIND_META[kindOf(p)].emoji} {p.name}</b>
-                    <div style={{ fontSize: 12, color: "#555", margin: "4px 0" }}>{p.desc || p.menu}</div>
-                    {p.category === "food" && <div style={{ fontSize: 12 }}>타베로그 {p.tabelog} · 구글 {p.google}</div>}
-                    <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                    <div style={{ fontSize: 12, color: "#555", margin: "4px 0" }}>{p.desc || p.menu || p.memo}</div>
+                    {p.category === "food" && (p.tabelog || p.google) && <div style={{ fontSize: 12 }}>타베로그 {p.tabelog} · 구글 {p.google}</div>}
+                    <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                       <a href={gmapDir(p.lat, p.lng, p.name)} target="_blank" rel="noreferrer">길찾기</a>
                       <a href={gmapSearch(p.name + " 삿포로")} target="_blank" rel="noreferrer">구글맵</a>
+                      <a href="#" onClick={(e) => { e.preventDefault(); editPlace(p); }}>편집</a>
+                      <a href="#" onClick={(e) => { e.preventDefault(); delPlace(p); }} style={{ color: "#c1543a" }}>삭제</a>
                     </div>
                   </div>
                 </Popup>
               </Marker>
             ))}
-            {/* 날짜별 동선 */}
             {routePlaces.length > 1 && (
               <Polyline positions={routePlaces.map((p) => [p.lat, p.lng] as [number, number])}
                 pathOptions={{ color: "#2b6cb0", weight: 3, opacity: 0.8, dashArray: "6 6" }} />
@@ -196,25 +292,28 @@ export function MapPage() {
             {myPos && <Marker position={myPos} icon={ME_ICON}><Popup>내 위치</Popup></Marker>}
             <Flyer target={selected} />
             {myPos && <FlyTo pos={myPos} />}
+            {flyTarget && <FlyTo pos={flyTarget} zoom={16} />}
           </MapContainer>
         </div>
 
         {/* List */}
         <div style={{ height: 560, overflowY: "auto", display: "grid", gap: 8, alignContent: "start", paddingRight: 4 }}>
           {visible.map((p) => (
-            <button key={p.id} onClick={() => setSelected(p)}
-              className="card" style={{
-                textAlign: "left", padding: "11px 13px", cursor: "pointer",
-                borderColor: selected?.id === p.id ? KIND_META[kindOf(p)].color : "var(--line)",
-              }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                <strong style={{ fontSize: 14 }}>{KIND_META[kindOf(p)].emoji} {p.name}</strong>
-                <span className="chip chip-muted" style={{ fontSize: 11 }}>{p.area}</span>
+            <div key={p.id} className="card" style={{ padding: "11px 13px", borderColor: selected?.id === p.id ? KIND_META[kindOf(p)].color : "var(--line)" }}>
+              <button onClick={() => setSelected(p)} style={{ all: "unset", cursor: "pointer", display: "block", width: "100%" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                  <strong style={{ fontSize: 14 }}>{KIND_META[kindOf(p)].emoji} {p.name}</strong>
+                  <span className="chip chip-muted" style={{ fontSize: 11 }}>{p.area}</span>
+                </div>
+                <div className="muted" style={{ fontSize: 12.5, marginTop: 3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                  {p.desc || p.menu || p.memo}
+                </div>
+              </button>
+              <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+                <button className="btn btn-ghost btn-sm" onClick={() => editPlace(p)}>편집</button>
+                <button className="btn btn-ghost btn-sm btn-danger" onClick={() => delPlace(p)}>삭제</button>
               </div>
-              <div className="muted" style={{ fontSize: 12.5, marginTop: 3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                {p.desc || p.menu}
-              </div>
-            </button>
+            </div>
           ))}
         </div>
       </div>

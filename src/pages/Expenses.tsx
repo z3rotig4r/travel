@@ -1,10 +1,8 @@
 import { useMemo, useState } from "react";
 import { Section, PageHeader, EmptyNote } from "../components/ui";
 import { useStore } from "../store";
-import { budget } from "../data";
 import { useExchangeRate, fmtRate100 } from "../lib/fx";
 import { tripStatus } from "../lib/time";
-import { trip } from "../data";
 import type { ExpenseCategory, ExpenseEntry } from "../types";
 
 const CATS: ExpenseCategory[] = ["식비", "교통", "쇼핑", "관광", "기타"];
@@ -12,7 +10,7 @@ const CAT_ICON: Record<ExpenseCategory, string> = { 식비: "🍜", 교통: "�
 const won = (n: number) => Math.round(n).toLocaleString("ko-KR") + "원";
 
 export function Expenses() {
-  const { expenses, addExpense, removeExpense, itinerary } = useStore();
+  const { expenses, addExpense, removeExpense, itinerary, trip, budgetCats } = useStore();
   const fx = useExchangeRate();
   const rate = fx.rate;
 
@@ -49,8 +47,8 @@ export function Expenses() {
 
   // 계획 예산 (시드 여행중 지출)
   const plannedByCat: Record<string, number> = {};
-  budget.categorySummary.forEach((c: any) => { plannedByCat[c.cat] = c.krw; });
-  const plannedTotal = budget.categorySummary.reduce((s: number, c: any) => s + c.krw, 0);
+  budgetCats.forEach((c: any) => { plannedByCat[c.cat] = c.krw; });
+  const plannedTotal = budgetCats.reduce((s: number, c: any) => s + c.krw, 0);
 
   return (
     <Section>

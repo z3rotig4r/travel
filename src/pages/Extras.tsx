@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Section, PageHeader } from "../components/ui";
 import { RecordModal, type Field } from "../components/RecordModal";
@@ -11,6 +11,7 @@ import type { BudgetFixed, TourItem, Insurer } from "../types";
 
 const won = (n: number) => (n || 0).toLocaleString("ko-KR") + "원";
 const TABS = [
+  { id: "trip", label: "✏️ 여행 설정" },
   { id: "packing", label: "🧳 준비물" },
   { id: "budget", label: "💰 경비" },
   { id: "tours", label: "🚌 버스투어" },
@@ -38,6 +39,7 @@ export function Extras() {
         ))}
       </div>
       <div key={tab} className="fade-up">
+        {tab === "trip" && <TripSettings />}
         {tab === "packing" && <Packing />}
         {tab === "budget" && <Budget />}
         {tab === "tours" && <Tours />}
@@ -46,6 +48,36 @@ export function Extras() {
         {tab === "backup" && <Backup />}
       </div>
     </Section>
+  );
+}
+
+function TripSettings() {
+  const trip = useStore((s) => s.trip);
+  const updateTrip = useStore((s) => s.updateTrip);
+  const num = (v: string) => (v === "" ? 0 : Number(v.replace(/[^0-9]/g, "")));
+
+  const Row = ({ label, children }: { label: string; children: ReactNode }) => (
+    <div><label>{label}</label><div style={{ marginTop: 4 }}>{children}</div></div>
+  );
+
+  return (
+    <div className="card" style={{ padding: 20, maxWidth: 640 }}>
+      <h3 style={{ marginTop: 0 }}>여행 기본 정보</h3>
+      <p className="soft" style={{ fontSize: 13, marginTop: 0 }}>여기서 바꾸면 대시보드·오늘·일정·경비·인쇄에 모두 반영되고, 공유방 참여자에게도 동기화됩니다.</p>
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
+        <div style={{ gridColumn: "1 / -1" }}><Row label="제목"><input value={trip.title} onChange={(e) => updateTrip({ title: e.target.value })} /></Row></div>
+        <div style={{ gridColumn: "1 / -1" }}><Row label="부제 (날짜·요약)"><input value={trip.subtitle} onChange={(e) => updateTrip({ subtitle: e.target.value })} /></Row></div>
+        <Row label="시작일 (YYYY-MM-DD)"><input value={trip.startDate} onChange={(e) => updateTrip({ startDate: e.target.value })} placeholder="2026-07-09" /></Row>
+        <Row label="여행 일수"><input inputMode="numeric" value={String(trip.days)} onChange={(e) => updateTrip({ days: num(e.target.value) })} /></Row>
+        <Row label="인원"><input value={trip.people} onChange={(e) => updateTrip({ people: e.target.value })} /></Row>
+        <Row label="항공"><input value={trip.flight} onChange={(e) => updateTrip({ flight: e.target.value })} /></Row>
+        <Row label="숙소 이름"><input value={trip.hotel.name} onChange={(e) => updateTrip({ hotel: { ...trip.hotel, name: e.target.value } })} /></Row>
+        <Row label="숙소 우편번호"><input value={trip.hotel.zip} onChange={(e) => updateTrip({ hotel: { ...trip.hotel, zip: e.target.value } })} /></Row>
+        <Row label="총 경비 (원)"><input inputMode="numeric" value={String(trip.budgetTotalKRW)} onChange={(e) => updateTrip({ budgetTotalKRW: num(e.target.value) })} /></Row>
+        <Row label="1인당 경비 (원)"><input inputMode="numeric" value={String(trip.budgetPerPersonKRW)} onChange={(e) => updateTrip({ budgetPerPersonKRW: num(e.target.value) })} /></Row>
+      </div>
+      <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>변경 즉시 저장됩니다. 원래대로 되돌리려면 백업 탭의 ‘↺ 시드로 초기화’.</p>
+    </div>
   );
 }
 
@@ -322,8 +354,8 @@ function Backup() {
   }
 
   function exportJson() {
-    const { bookmarks, shopping, expenses, checked, itinerary, packing, budgetFixed, budgetCats, tours, insurers } = store;
-    const data = { bookmarks, shopping, expenses, checked, itinerary, packing, budgetFixed, budgetCats, tours, insurers, exportedAt: new Date().toISOString() };
+    const { trip, bookmarks, shopping, expenses, checked, itinerary, packing, budgetFixed, budgetCats, tours, insurers, places } = store;
+    const data = { trip, bookmarks, shopping, expenses, checked, itinerary, packing, budgetFixed, budgetCats, tours, insurers, places, exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);

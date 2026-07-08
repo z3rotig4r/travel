@@ -5,7 +5,6 @@ import { useStore } from "../store";
 import { useWeather } from "../lib/weather";
 import { WeatherBadge } from "../components/WeatherBadge";
 import { dateKeyForDay } from "../lib/time";
-import { trip } from "../data";
 import type { Ref, Block } from "../types";
 
 function RefLink({ r }: { r: Ref }) {
@@ -26,6 +25,8 @@ const startMin = (time: string) => {
 export function Schedule() {
   const [params, setParams] = useSearchParams();
   const itinerary = useStore((s) => s.itinerary);
+  const trip = useStore((s) => s.trip);
+  const places = useStore((s) => s.places);
   const { addBlock, updateBlock, removeBlock, addDay, removeDay, updateDayMeta } = useStore();
 
   const weather = useWeather();
@@ -176,9 +177,12 @@ export function Schedule() {
             <label>비고 / 메모</label>
             <textarea rows={2} value={form.data.note || ""} placeholder="팁·주의사항"
               onChange={(e) => setForm({ ...form, data: { ...form.data, note: e.target.value } })} style={{ margin: "4px 0 10px", resize: "vertical" }} />
-            <label>연결 장소 (지도 마커 이름, 선택)</label>
-            <input value={form.data.place || ""} placeholder="예: 오타루 운하"
+            <label>연결 장소 (등록된 장소에서 선택 · 지도와 동선 연동)</label>
+            <input list="place-names" value={form.data.place || ""} placeholder="입력하거나 목록에서 선택"
               onChange={(e) => setForm({ ...form, data: { ...form.data, place: e.target.value } })} style={{ margin: "4px 0 10px" }} />
+            <datalist id="place-names">
+              {places.map((p) => <option key={p.id} value={p.name} />)}
+            </datalist>
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
               <button className="btn btn-primary" onClick={save}>저장</button>
               <button className="btn" onClick={() => setForm(null)}>취소</button>

@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { Section } from "../components/ui";
 import { WeatherBadge } from "../components/WeatherBadge";
 import { useStore } from "../store";
-import { trip } from "../data";
 import { jstParts, jstClock, tripStatus, parseRange, fmtMin, dateKeyForDay } from "../lib/time";
 import { useWeather } from "../lib/weather";
 import type { Block } from "../types";
@@ -19,6 +18,7 @@ type Status = "past" | "current" | "next" | "upcoming";
 
 export function Today() {
   const itinerary = useStore((s) => s.itinerary);
+  const trip = useStore((s) => s.trip);
   const now = useTick();
   const weather = useWeather();
   const ts = tripStatus(trip.startDate, trip.days, now);

@@ -1,0 +1,158 @@
+{
+  "biei_furano": {
+    "date": "7/10 (금)",
+    "title": "비에이 · 후라노",
+    "items": [
+      {
+        "name": "흰그림자투어 (오리지널)",
+        "price": 49000,
+        "time": "09:30~19:00",
+        "pickup": "스스키노",
+        "photo": "O",
+        "junpei": "도시락",
+        "rating": null,
+        "pros": "업계 최저가, 15년+ 원조, 1년 미만 신차",
+        "cons": "사진 기본수준, 대규모 진행 가능성",
+        "url": "https://www.myrealtrip.com/offers/33469"
+      },
+      {
+        "name": "흰그림자투어 (준페이 ONLY)",
+        "price": 69000,
+        "time": "09:30~19:00",
+        "pickup": "스스키노",
+        "photo": "O",
+        "junpei": "식당예약",
+        "rating": "4.8 (610)",
+        "pros": "준페이 자동 예약확정, 신차",
+        "cons": "오리지널보다 고가, 최소 10인",
+        "url": "https://www.myrealtrip.com/offers/35328"
+      },
+      {
+        "name": "인디고트래블",
+        "price": 99000,
+        "time": "07:40~18:00",
+        "pickup": "삿포로역",
+        "photo": "DSLR",
+        "junpei": "식당예약",
+        "rating": "5.0 (9143)",
+        "pros": "DSLR 고퀄 촬영, 준페이 매장식사, 후기 1위",
+        "cons": "가격 가장 높음",
+        "url": "https://www.klook.com/ko/activity/79418"
+      },
+      {
+        "name": "엔데이트립",
+        "price": 69000,
+        "time": "07:50~18:40",
+        "pickup": "오도리역",
+        "photo": "X",
+        "junpei": "식당예약",
+        "rating": "4.8 (2832)",
+        "pros": "가성비 우수, 오도리 출발",
+        "cons": "사진 서비스 없음",
+        "url": "https://experiences.myrealtrip.com/products/3412145"
+      },
+      {
+        "name": "여행 한 그릇",
+        "price": 69000,
+        "time": "08:00~18:30",
+        "pickup": "삿포로역 북구",
+        "photo": "무료",
+        "junpei": "식당예약",
+        "rating": "5.0 (1538)",
+        "pros": "무료 사진(원본 제공), 무료취소",
+        "cons": "여행사 규모 정보 제한",
+        "url": "https://experiences.myrealtrip.com/products/3425917"
+      },
+      {
+        "name": "라쿠투어",
+        "price": 79000,
+        "time": "08:00~19:00",
+        "pickup": "오도리역",
+        "photo": "O",
+        "junpei": "매장식사",
+        "rating": "4.9 (2156)",
+        "pros": "눈썰매(계절), 준페이 매장식사",
+        "cons": "고가, 주말 예약확인 지연 가능",
+        "url": "https://experiences.myrealtrip.com/products/3153598"
+      },
+      {
+        "name": "유투어버스",
+        "price": 49900,
+        "time": "07:40~18:00",
+        "pickup": "삿포로역",
+        "photo": "X",
+        "junpei": "도시락",
+        "rating": null,
+        "pros": "대형버스 안정적, 10년+ 가이드",
+        "cons": "사진 미제공",
+        "url": "https://experiences.myrealtrip.com/products/3154187"
+      }
+    ]
+  },
+  "shakotan_otaru": {
+    "date": "7/11 (토)",
+    "title": "샤코탄 · 오타루",
+    "items": [
+      {
+        "name": "흰그림자투어",
+        "price": 99000,
+        "time": "09:30~18:30",
+        "pickup": "스스키노",
+        "photo": "X",
+        "junpei": null,
+        "rating": null,
+        "pros": "오션뷰 온천 특전, 하차 3곳 선택",
+        "cons": "사진 없음",
+        "url": "https://www.myrealtrip.com/offers/33469"
+      },
+      {
+        "name": "라쿠투어",
+        "price": 69000,
+        "time": "08:00~18:30",
+        "pickup": "오도리역",
+        "photo": "X",
+        "junpei": null,
+        "rating": "4.9 (201)",
+        "pros": "한국인 가이드, 오타루 3시간 자유, 가성비",
+        "cons": "최소 10인, 사진 없음",
+        "url": "https://www.klook.com/ko/activity/118115"
+      },
+      {
+        "name": "엔데이트립",
+        "price": 65000,
+        "time": "08:40~18:30",
+        "pickup": "오도리역",
+        "photo": "X",
+        "junpei": null,
+        "rating": null,
+        "pros": "최소 1인 출발(확정 쉬움), 온천 포함, 최저가",
+        "cons": "사진 없음, 후기 정보 제한",
+        "url": "https://travel.interpark.com"
+      },
+      {
+        "name": "KKday (한국어가이드)",
+        "price": 65000,
+        "time": "08:40~18:30",
+        "pickup": "오도리역",
+        "photo": "라이카 무료",
+        "junpei": null,
+        "rating": null,
+        "pros": "한국어 가이드, 온천입욕권, 쇼핑쿠폰",
+        "cons": "온천권 시즌한정",
+        "url": "https://www.kkday.com/ko/product/164683"
+      },
+      {
+        "name": "인디고트래블",
+        "price": 69000,
+        "time": "08:00~19:00",
+        "pickup": "삿포로역 북구",
+        "photo": "DSLR",
+        "junpei": null,
+        "rating": null,
+        "pros": "DSLR 전문 촬영, 전담가이드, 카무이곶 코스",
+        "cons": "고가, 온천 미포함",
+        "url": "https://experiences.myrealtrip.com/products/3791672"
+      }
+    ]
+  }
+}

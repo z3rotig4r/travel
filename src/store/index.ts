@@ -1,0 +1,199 @@
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { Bookmark, ShoppingItem, Day, Block, BudgetFixed, BudgetCat, TourItem, Insurer } from "../types";
+import { deleteImage } from "../lib/db";
+import * as seed from "../data";
+
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
+
+interface Tours { biei_furano: { date: string; title: string; items: TourItem[] }; shakotan_otaru: { date: string; title: string; items: TourItem[] } }
+
+interface State {
+  // 사용자 생성
+  bookmarks: Bookmark[];
+  shopping: ShoppingItem[];
+  checked: Record<string, boolean>;
+  theme: "light" | "dark";
+
+  // 편집 가능한 시드 컬렉션 (첫 실행 시 seed에서 채움)
+  seededVersion: number;
+  itinerary: Day[];
+  packing: Record<string, string[]>;
+  budgetFixed: BudgetFixed[];
+  budgetCats: BudgetCat[];
+  tours: Tours;
+  insurers: Insurer[];
+
+  // --- bookmarks ---
+  addBookmark: (b: Omit<Bookmark, "id" | "createdAt">) => void;
+  updateBookmark: (id: string, patch: Partial<Bookmark>) => void;
+  removeBookmark: (id: string) => void;
+
+  // --- shopping ---
+  addShopping: (s: Omit<ShoppingItem, "id" | "createdAt" | "bought">) => void;
+  updateShopping: (id: string, patch: Partial<ShoppingItem>) => void;
+  removeShopping: (id: string) => void;
+  toggleBought: (id: string) => void;
+
+  // --- packing ---
+  toggleCheck: (key: string) => void;
+  addPackingItem: (cat: string, item: string) => void;
+  removePackingItem: (cat: string, item: string) => void;
+  addPackingCategory: (cat: string) => void;
+  removePackingCategory: (cat: string) => void;
+
+  // --- itinerary ---
+  addBlock: (dayIdx: number, block: Block) => void;
+  updateBlock: (dayIdx: number, blockIdx: number, patch: Partial<Block>) => void;
+  removeBlock: (dayIdx: number, blockIdx: number) => void;
+  addDay: () => void;
+  updateDayMeta: (dayIdx: number, patch: Partial<Pick<Day, "date" | "dow" | "theme">>) => void;
+  removeDay: (dayIdx: number) => void;
+
+  // --- budget ---
+  addBudgetFixed: (row: BudgetFixed) => void;
+  updateBudgetFixed: (i: number, patch: Partial<BudgetFixed>) => void;
+  removeBudgetFixed: (i: number) => void;
+
+  // --- tours ---
+  addTour: (group: keyof Tours, t: TourItem) => void;
+  updateTour: (group: keyof Tours, i: number, patch: Partial<TourItem>) => void;
+  removeTour: (group: keyof Tours, i: number) => void;
+
+  // --- insurers ---
+  addInsurer: (x: Insurer) => void;
+  updateInsurer: (i: number, patch: Partial<Insurer>) => void;
+  removeInsurer: (i: number) => void;
+
+  // --- misc ---
+  setTheme: (t: "light" | "dark") => void;
+  importState: (data: any) => void;
+  resetSeed: () => void;
+}
+
+const SEED_VERSION = 1;
+const seededDefaults = () => ({
+  seededVersion: SEED_VERSION,
+  itinerary: clone(seed.itinerary),
+  packing: clone(seed.packing),
+  budgetFixed: clone(seed.budget.fixed) as BudgetFixed[],
+  budgetCats: clone(seed.budget.categorySummary) as BudgetCat[],
+  tours: clone(seed.tours) as Tours,
+  insurers: clone(seed.insurance.companies) as Insurer[],
+});
+
+export const useStore = create<State>()(
+  persist(
+    (set, get) => ({
+      bookmarks: [],
+      shopping: [],
+      checked: {},
+      theme: "light",
+      ...seededDefaults(),
+
+      addBookmark: (b) =>
+        set((s) => ({ bookmarks: [{ ...b, id: uid(), createdAt: Date.now() }, ...s.bookmarks] })),
+      updateBookmark: (id, patch) =>
+        set((s) => ({ bookmarks: s.bookmarks.map((x) => (x.id === id ? { ...x, ...patch } : x)) })),
+      removeBookmark: (id) => {
+        const b = get().bookmarks.find((x) => x.id === id);
+        if (b?.imageId) deleteImage(b.imageId);
+        set((s) => ({ bookmarks: s.bookmarks.filter((x) => x.id !== id) }));
+      },
+
+      addShopping: (item) =>
+        set((s) => ({ shopping: [{ ...item, id: uid(), createdAt: Date.now(), bought: false }, ...s.shopping] })),
+      updateShopping: (id, patch) =>
+        set((s) => ({ shopping: s.shopping.map((x) => (x.id === id ? { ...x, ...patch } : x)) })),
+      removeShopping: (id) => {
+        const it = get().shopping.find((x) => x.id === id);
+        if (it?.imageId) deleteImage(it.imageId);
+        set((s) => ({ shopping: s.shopping.filter((x) => x.id !== id) }));
+      },
+      toggleBought: (id) =>
+        set((s) => ({ shopping: s.shopping.map((x) => (x.id === id ? { ...x, bought: !x.bought } : x)) })),
+
+      toggleCheck: (key) => set((s) => ({ checked: { ...s.checked, [key]: !s.checked[key] } })),
+      addPackingItem: (cat, item) =>
+        set((s) => ({ packing: { ...s.packing, [cat]: [...(s.packing[cat] || []), item] } })),
+      removePackingItem: (cat, item) =>
+        set((s) => ({ packing: { ...s.packing, [cat]: (s.packing[cat] || []).filter((x) => x !== item) } })),
+      addPackingCategory: (cat) =>
+        set((s) => (s.packing[cat] ? {} : { packing: { ...s.packing, [cat]: [] } })),
+      removePackingCategory: (cat) =>
+        set((s) => { const p = { ...s.packing }; delete p[cat]; return { packing: p }; }),
+
+      addBlock: (dayIdx, block) =>
+        set((s) => { const it = clone(s.itinerary); it[dayIdx].blocks.push(block); return { itinerary: it }; }),
+      updateBlock: (dayIdx, blockIdx, patch) =>
+        set((s) => { const it = clone(s.itinerary); it[dayIdx].blocks[blockIdx] = { ...it[dayIdx].blocks[blockIdx], ...patch }; return { itinerary: it }; }),
+      removeBlock: (dayIdx, blockIdx) =>
+        set((s) => { const it = clone(s.itinerary); it[dayIdx].blocks.splice(blockIdx, 1); return { itinerary: it }; }),
+      addDay: () =>
+        set((s) => {
+          const it = clone(s.itinerary);
+          const n = it.length + 1;
+          it.push({ day: n, date: `${n}일차`, dow: "", theme: "새 일정", blocks: [] });
+          return { itinerary: it };
+        }),
+      updateDayMeta: (dayIdx, patch) =>
+        set((s) => { const it = clone(s.itinerary); it[dayIdx] = { ...it[dayIdx], ...patch }; return { itinerary: it }; }),
+      removeDay: (dayIdx) =>
+        set((s) => {
+          const it = clone(s.itinerary); it.splice(dayIdx, 1);
+          it.forEach((d, i) => (d.day = i + 1));
+          return { itinerary: it };
+        }),
+
+      addBudgetFixed: (row) => set((s) => ({ budgetFixed: [...s.budgetFixed, row] })),
+      updateBudgetFixed: (i, patch) =>
+        set((s) => ({ budgetFixed: s.budgetFixed.map((r, j) => (j === i ? { ...r, ...patch } : r)) })),
+      removeBudgetFixed: (i) => set((s) => ({ budgetFixed: s.budgetFixed.filter((_, j) => j !== i) })),
+
+      addTour: (group, t) =>
+        set((s) => { const tr = clone(s.tours); tr[group].items.push(t); return { tours: tr }; }),
+      updateTour: (group, i, patch) =>
+        set((s) => { const tr = clone(s.tours); tr[group].items[i] = { ...tr[group].items[i], ...patch }; return { tours: tr }; }),
+      removeTour: (group, i) =>
+        set((s) => { const tr = clone(s.tours); tr[group].items.splice(i, 1); return { tours: tr }; }),
+
+      addInsurer: (x) => set((s) => ({ insurers: [...s.insurers, x] })),
+      updateInsurer: (i, patch) =>
+        set((s) => ({ insurers: s.insurers.map((r, j) => (j === i ? { ...r, ...patch } : r)) })),
+      removeInsurer: (i) => set((s) => ({ insurers: s.insurers.filter((_, j) => j !== i) })),
+
+      setTheme: (t) => set({ theme: t }),
+      importState: (data) =>
+        set((s) => ({
+          bookmarks: data.bookmarks ?? s.bookmarks,
+          shopping: data.shopping ?? s.shopping,
+          checked: data.checked ?? s.checked,
+          itinerary: data.itinerary ?? s.itinerary,
+          packing: data.packing ?? s.packing,
+          budgetFixed: data.budgetFixed ?? s.budgetFixed,
+          budgetCats: data.budgetCats ?? s.budgetCats,
+          tours: data.tours ?? s.tours,
+          insurers: data.insurers ?? s.insurers,
+        })),
+      resetSeed: () => set({ ...seededDefaults() }),
+    }),
+    {
+      name: "sapporo-travel-store",
+      version: SEED_VERSION,
+      migrate: (persisted: any, _v) => {
+        // 이전 버전(시드 컬렉션 없음) 호환: 누락 필드 채우기
+        if (persisted && persisted.seededVersion !== SEED_VERSION) {
+          return { ...seededDefaults(), ...persisted, seededVersion: SEED_VERSION,
+            itinerary: persisted.itinerary ?? seededDefaults().itinerary,
+            packing: persisted.packing ?? seededDefaults().packing,
+            budgetFixed: persisted.budgetFixed ?? seededDefaults().budgetFixed,
+            budgetCats: persisted.budgetCats ?? seededDefaults().budgetCats,
+            tours: persisted.tours ?? seededDefaults().tours,
+            insurers: persisted.insurers ?? seededDefaults().insurers };
+        }
+        return persisted;
+      },
+    }
+  )
+);

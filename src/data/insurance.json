@@ -1,0 +1,78 @@
+{
+  "condition": "한국→일본 삿포로 / 성인 3인(전원 55세 이하) / 진에어 왕복 / 4박 5일",
+  "checkpoints": [
+    "의료비 한도: 일본 의료비 매우 높음(맹장 200~400만원). 최소 1,000만원 이상 권장",
+    "항공지연 보상 포함 플랜 권장",
+    "기저질환·복용약 고지 의무 확인(미고지 시 보험금 거부 가능)",
+    "출발 1주일 전 가입 권장, 여행취소 보상 포함 여부 확인"
+  ],
+  "companies": [
+    {
+      "name": "삼성화재",
+      "limit": "최대 3천만원",
+      "fee": "약 1~2만원",
+      "note": "신뢰도 1위, 현지 SOS 의료연계",
+      "url": "https://www.samsungfire.com"
+    },
+    {
+      "name": "현대해상",
+      "limit": "최대 3천만원",
+      "fee": "약 1~2만원",
+      "note": "모바일 앱 청구 편리",
+      "url": "https://www.hi.co.kr"
+    },
+    {
+      "name": "DB손해보험",
+      "limit": "최대 3천만원",
+      "fee": "약 1~1.5만원",
+      "note": "가격 경쟁력, 온라인 특가",
+      "url": "https://www.directdb.co.kr"
+    },
+    {
+      "name": "KB손해보험",
+      "limit": "최대 5천만원",
+      "fee": "약 1.5~2만원",
+      "note": "의료비 한도 최고, 가족 단체 할인",
+      "url": "https://www.kbinsure.co.kr"
+    },
+    {
+      "name": "메리츠화재",
+      "limit": "최대 3천만원",
+      "fee": "약 1~1.5만원",
+      "note": "보험료 저렴, 가성비 우수",
+      "url": "https://www.meritzfire.com"
+    },
+    {
+      "name": "캐롯손해보험",
+      "limit": "최대 3천만원",
+      "fee": "약 1만원",
+      "note": "카카오 계열, 앱 가입·청구 간편",
+      "url": "https://www.carrotins.com"
+    },
+    {
+      "name": "AIG손해보험",
+      "limit": "최대 5천만원",
+      "fee": "약 1.5~2만원",
+      "note": "미국계 글로벌, 의료비 한도 높음",
+      "url": "https://www.aig.co.kr"
+    }
+  ],
+  "platforms": [
+    {
+      "name": "보험다모아",
+      "note": "금감원 운영 공식 비교",
+      "url": "https://www.e-insmarket.or.kr"
+    },
+    {
+      "name": "카카오페이 보험",
+      "note": "3인 동시 비교·가입",
+      "url": "https://pay.kakao.com"
+    },
+    {
+      "name": "토스 보험",
+      "note": "비교·가입·청구 모두 앱",
+      "url": "https://toss.im"
+    }
+  ],
+  "recommend": "카카오페이/보험다모아에서 3인 동시 비교 → 삼성화재(신뢰) 또는 DB손보(가성비). 의료비 1,000만원+ · 항공지연 포함 · 영수증·진단서 사진 보관 필수"
+}

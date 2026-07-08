@@ -19,14 +19,8 @@ const NAV = [
   { to: "/expenses", label: "지출", icon: "💴" },
   { to: "/extras", label: "정보", icon: "📋" },
 ];
-// 모바일 하단 탭바 (핵심 5개)
-const BOTTOM = [
-  { to: "/today", label: "오늘", icon: "📍" },
-  { to: "/schedule", label: "일정", icon: "🗓️" },
-  { to: "/map", label: "지도", icon: "🗺️" },
-  { to: "/expenses", label: "지출", icon: "💴" },
-  { to: "/extras", label: "정보", icon: "📋" },
-];
+// 모바일 하단 탭바 = 상단 메뉴와 동일한 전체 항목 (좁으면 가로 스크롤)
+const BOTTOM = NAV;
 
 export function Layout() {
   const theme = useStore((s) => s.theme);
@@ -145,16 +139,17 @@ export function Layout() {
         </div>
       </footer>
 
-      {/* 모바일 하단 탭바 */}
+      {/* 모바일 하단 탭바 (전체 항목) */}
       <nav className="bottombar">
         {BOTTOM.map((n) => (
           <NavLink key={n.to} to={n.to} end={(n as any).end}
             style={({ isActive }) => ({
               display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-              flex: 1, padding: "7px 0", textDecoration: "none", fontSize: 11, fontWeight: 600,
+              flex: "1 0 auto", minWidth: 42, padding: "6px 2px", textDecoration: "none",
+              fontSize: 10, fontWeight: 600, whiteSpace: "nowrap",
               color: isActive ? "var(--accent-ink)" : "var(--ink-faint)",
             })}>
-            <span style={{ fontSize: 19 }}>{n.icon}</span>
+            <span style={{ fontSize: 18 }}>{n.icon}</span>
             {n.label}
           </NavLink>
         ))}
@@ -173,7 +168,11 @@ export function Layout() {
             backdrop-filter: saturate(1.4) blur(10px);
             border-top: 1px solid var(--line);
             padding-bottom: env(safe-area-inset-bottom);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
           }
+          .bottombar::-webkit-scrollbar { display: none; }
         }
       `}</style>
     </div>

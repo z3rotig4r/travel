@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { Section, PageHeader } from "../components/ui";
 import { RecordModal, type Field } from "../components/RecordModal";
 import { useStore } from "../store";
 import { insurance as insSeed } from "../data";
 import { useExchangeRate, fmtRate100 } from "../lib/fx";
+import { buildShareUrl } from "../lib/share";
 import type { BudgetFixed, TourItem, Insurer } from "../types";
 
 const won = (n: number) => (n || 0).toLocaleString("ko-KR") + "원";
@@ -309,10 +310,17 @@ function Insurance() {
 function Backup() {
   const store = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [shared, setShared] = useState<string>("");
+
+  async function makeShare() {
+    const url = buildShareUrl(store);
+    setShared(url);
+    try { await navigator.clipboard.writeText(url); } catch { /* clipboard 불가 시 표시만 */ }
+  }
 
   function exportJson() {
-    const { bookmarks, shopping, checked, itinerary, packing, budgetFixed, budgetCats, tours, insurers } = store;
-    const data = { bookmarks, shopping, checked, itinerary, packing, budgetFixed, budgetCats, tours, insurers, exportedAt: new Date().toISOString() };
+    const { bookmarks, shopping, expenses, checked, itinerary, packing, budgetFixed, budgetCats, tours, insurers } = store;
+    const data = { bookmarks, shopping, expenses, checked, itinerary, packing, budgetFixed, budgetCats, tours, insurers, exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -338,7 +346,7 @@ function Backup() {
         기기 변경·백업을 위해 JSON으로 내보내세요.
       </p>
       <div className="muted" style={{ fontSize: 13, marginBottom: 14 }}>
-        북마크 {store.bookmarks.length} · 쇼핑 {store.shopping.length} · 일정 {store.itinerary.length}일 · 투어 {store.tours.biei_furano.items.length + store.tours.shakotan_otaru.items.length} · 보험 {store.insurers.length}
+        북마크 {store.bookmarks.length} · 쇼핑 {store.shopping.length} · 지출 {store.expenses.length} · 일정 {store.itinerary.length}일 · 투어 {store.tours.biei_furano.items.length + store.tours.shakotan_otaru.items.length} · 보험 {store.insurers.length}
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button className="btn btn-primary" onClick={exportJson}>⬇️ JSON 내보내기</button>
@@ -349,8 +357,25 @@ function Backup() {
           ↺ 시드로 초기화
         </button>
       </div>
+
+      <hr style={{ border: "none", borderTop: "1px solid var(--line)", margin: "20px 0" }} />
+      <h4 style={{ margin: "0 0 8px" }}>가족과 공유 · 인쇄</h4>
+      <p className="soft" style={{ fontSize: 13, marginTop: 0 }}>
+        공유 링크를 부모님께 보내면 같은 일정·정보를 열어볼 수 있어요(읽기용, 이미지 제외).
+      </p>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button className="btn btn-primary" onClick={makeShare}>🔗 공유 링크 복사</button>
+        <Link className="btn" to="/print">🖨️ 인쇄 / PDF 저장</Link>
+      </div>
+      {shared && (
+        <div style={{ marginTop: 10 }}>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>링크가 복사되었어요 (길이 {shared.length}자):</div>
+          <input readOnly value={shared} onFocus={(e) => e.currentTarget.select()} style={{ fontSize: 12 }} />
+        </div>
+      )}
+
       <p className="muted" style={{ fontSize: 12, marginTop: 14 }}>
-        ⚠️ 첨부한 스크린샷 이미지는 브라우저(IndexedDB)에만 저장되어 JSON 백업에는 포함되지 않습니다.
+        ⚠️ 첨부한 스크린샷 이미지는 브라우저(IndexedDB)에만 저장되어 JSON 백업·공유 링크에는 포함되지 않습니다.
       </p>
     </div>
   );

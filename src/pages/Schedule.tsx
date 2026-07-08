@@ -2,6 +2,10 @@ import { useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Section, PageHeader } from "../components/ui";
 import { useStore } from "../store";
+import { useWeather } from "../lib/weather";
+import { WeatherBadge } from "../components/WeatherBadge";
+import { dateKeyForDay } from "../lib/time";
+import { trip } from "../data";
 import type { Ref, Block } from "../types";
 
 function RefLink({ r }: { r: Ref }) {
@@ -24,6 +28,7 @@ export function Schedule() {
   const itinerary = useStore((s) => s.itinerary);
   const { addBlock, updateBlock, removeBlock, addDay, removeDay, updateDayMeta } = useStore();
 
+  const weather = useWeather();
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState<null | { blockIdx: number | null; data: Block }>(null);
   const [dayEdit, setDayEdit] = useState(false);
@@ -78,6 +83,13 @@ export function Schedule() {
           <button className="btn" style={{ flex: "0 0 auto", borderStyle: "dashed" }} onClick={addDay}>＋ 날짜 추가</button>
         )}
       </div>
+
+      {/* Active day weather */}
+      {weather.byDate[dateKeyForDay(trip.startDate, dayIdx)] && (
+        <div style={{ marginBottom: 16 }}>
+          <WeatherBadge w={weather.byDate[dateKeyForDay(trip.startDate, dayIdx)]} />
+        </div>
+      )}
 
       {/* Day meta edit */}
       {edit && (

@@ -1,11 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import { Section, PageHeader } from "../components/ui";
 import { attractions, restaurants, trip } from "../data";
+import { useStore } from "../store";
 import { gmapDir, gmapSearch } from "../lib/maps";
 import type { Place } from "../types";
+
+function numIcon(n: number) {
+  return L.divIcon({
+    className: "",
+    html: `<div style="transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;
+      background:#2b6cb0;color:#fff;border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.4);
+      display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">${n}</div>`,
+    iconSize: [0, 0], iconAnchor: [0, 0],
+  });
+}
+const ME_ICON = L.divIcon({
+  className: "",
+  html: `<div style="transform:translate(-50%,-50%)"><div style="width:16px;height:16px;border-radius:50%;
+    background:#2b6cb0;border:3px solid #fff;box-shadow:0 0 0 4px rgba(43,108,176,.35)"></div></div>`,
+  iconSize: [0, 0], iconAnchor: [0, 0],
+});
 
 type Kind = "attraction" | "food" | "tour";
 function kindOf(p: Place): Kind {
@@ -39,6 +56,12 @@ function Flyer({ target }: { target: Place | null }) {
   return null;
 }
 
+function FlyTo({ pos }: { pos: [number, number] }) {
+  const map = useMap();
+  useEffect(() => { map.flyTo(pos, 15, { duration: 0.8 }); }, [pos, map]);
+  return null;
+}
+
 const HOTEL_ICON = L.divIcon({
   className: "",
   html: `<div style="transform:translate(-50%,-50%);font-size:22px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))">🏨</div>`,
@@ -48,12 +71,39 @@ const HOTEL_ICON = L.divIcon({
 export function MapPage() {
   const [params] = useSearchParams();
   const focusName = params.get("place");
+  const itinerary = useStore((s) => s.itinerary);
   const [filters, setFilters] = useState<Record<Kind, boolean>>({ attraction: true, food: true, tour: true });
   const [selected, setSelected] = useState<Place | null>(null);
+  const [routeDay, setRouteDay] = useState(0); // 0 = 동선 끄기
+  const [myPos, setMyPos] = useState<[number, number] | null>(null);
+  const [geoErr, setGeoErr] = useState("");
   const markerRefs = useRef<Record<string, L.Marker | null>>({});
 
   const all = useMemo(() => [...attractions, ...restaurants], []);
   const visible = useMemo(() => all.filter((p) => filters[kindOf(p)]), [all, filters]);
+
+  // 선택 일차의 동선: 블록의 place를 좌표가 있는 장소와 매칭해 순서대로
+  const routePlaces = useMemo(() => {
+    if (!routeDay) return [] as Place[];
+    const day = itinerary.find((d) => d.day === routeDay);
+    if (!day) return [];
+    const seq: Place[] = [];
+    for (const b of day.blocks) {
+      if (!b.place) continue;
+      const p = all.find((x) => x.name === b.place || x.name.includes(b.place!) || b.place!.includes(x.name));
+      if (p && !seq.some((s) => s.id === p.id)) seq.push(p);
+    }
+    return seq;
+  }, [routeDay, itinerary, all]);
+
+  function locate() {
+    if (!navigator.geolocation) { setGeoErr("위치 기능을 지원하지 않아요."); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setMyPos([pos.coords.latitude, pos.coords.longitude]); setGeoErr(""); },
+      () => setGeoErr("위치 권한이 거부되었어요."),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }
 
   // ?place= 로 진입 시 포커스
   useEffect(() => {
@@ -95,7 +145,15 @@ export function MapPage() {
             </button>
           );
         })}
+        <div style={{ width: 1, alignSelf: "stretch", background: "var(--line)", margin: "0 4px" }} />
+        <select value={routeDay} onChange={(e) => setRouteDay(+e.target.value)}
+          style={{ width: "auto", padding: "7px 12px", borderRadius: 999 }}>
+          <option value={0}>🧭 동선 보기 끄기</option>
+          {itinerary.map((d) => <option key={d.day} value={d.day}>{d.day}일차 동선</option>)}
+        </select>
+        <button className="btn" onClick={locate}>📍 내 위치</button>
       </div>
+      {geoErr && <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{geoErr}</div>}
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 320px", gap: 16 }} className="map-grid">
         {/* Map */}
@@ -124,7 +182,20 @@ export function MapPage() {
                 </Popup>
               </Marker>
             ))}
+            {/* 날짜별 동선 */}
+            {routePlaces.length > 1 && (
+              <Polyline positions={routePlaces.map((p) => [p.lat, p.lng] as [number, number])}
+                pathOptions={{ color: "#2b6cb0", weight: 3, opacity: 0.8, dashArray: "6 6" }} />
+            )}
+            {routePlaces.map((p, i) => (
+              <Marker key={"rt-" + p.id} position={[p.lat, p.lng]} icon={numIcon(i + 1)}
+                eventHandlers={{ click: () => setSelected(p) }}>
+                <Popup><b>{i + 1}. {p.name}</b></Popup>
+              </Marker>
+            ))}
+            {myPos && <Marker position={myPos} icon={ME_ICON}><Popup>내 위치</Popup></Marker>}
             <Flyer target={selected} />
+            {myPos && <FlyTo pos={myPos} />}
           </MapContainer>
         </div>
 

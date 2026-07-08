@@ -75,6 +75,19 @@ export interface Bookmark {
   createdAt: number;
 }
 
+// 여행중 실시간 지출 기록
+export type ExpenseCategory = "식비" | "교통" | "쇼핑" | "관광" | "기타";
+export interface ExpenseEntry {
+  id: string;
+  day: number;          // 몇 일차
+  category: ExpenseCategory;
+  label: string;
+  amountJPY: number;    // 엔 (원화 직접 지출은 amountJPY=0 + krwDirect)
+  krwDirect?: number;   // 원화로 직접 낸 금액(선택)
+  people: number;       // 몇 명 분 (정산용)
+  createdAt: number;
+}
+
 /* ---- 편집 가능한 컬렉션 (시드에서 초기화 후 사용자가 수정) ---- */
 export interface BudgetFixed { cat: string; item: string; krw: number; note?: string }
 export interface BudgetCat { cat: string; jpy: number; krw: number }

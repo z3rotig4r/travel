@@ -1,24 +1,52 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useStore } from "../store";
+import { readShareFromHash } from "../lib/share";
 
 const NAV = [
+  { to: "/today", label: "오늘", icon: "📍" },
   { to: "/", label: "대시보드", icon: "🏠", end: true },
   { to: "/schedule", label: "일정", icon: "🗓️" },
-  { to: "/guide", label: "영상 가이드", icon: "🎬" },
+  { to: "/guide", label: "영상", icon: "🎬" },
   { to: "/map", label: "지도", icon: "🗺️" },
   { to: "/shopping", label: "쇼핑", icon: "🛍️" },
+  { to: "/expenses", label: "지출", icon: "💴" },
+  { to: "/extras", label: "정보", icon: "📋" },
+];
+// 모바일 하단 탭바 (핵심 5개)
+const BOTTOM = [
+  { to: "/today", label: "오늘", icon: "📍" },
+  { to: "/schedule", label: "일정", icon: "🗓️" },
+  { to: "/map", label: "지도", icon: "🗺️" },
+  { to: "/expenses", label: "지출", icon: "💴" },
   { to: "/extras", label: "정보", icon: "📋" },
 ];
 
 export function Layout() {
   const theme = useStore((s) => s.theme);
   const setTheme = useStore((s) => s.setTheme);
+  const importState = useStore((s) => s.importState);
   const loc = useLocation();
+  const [shareData, setShareData] = useState<Record<string, any> | null>(null);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
+
+  // 공유 링크(#s=)로 진입 시 가져오기 배너
+  useEffect(() => {
+    const data = readShareFromHash();
+    if (data) setShareData(data);
+  }, []);
+  function acceptShare() {
+    if (shareData) importState(shareData);
+    history.replaceState(null, "", location.pathname + location.search);
+    setShareData(null);
+  }
+  function dismissShare() {
+    history.replaceState(null, "", location.pathname + location.search);
+    setShareData(null);
+  }
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -61,21 +89,58 @@ export function Layout() {
         </div>
       </header>
 
-      <main style={{ flex: 1 }}>
+      {shareData && (
+        <div className="container" style={{ padding: "12px 20px 0" }}>
+          <div className="card" style={{ padding: "12px 16px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", borderColor: "var(--accent)", background: "var(--accent-soft)" }}>
+            <span style={{ fontSize: 14 }}>📨 공유된 여행 데이터를 받았어요. 지금 내용을 <b>대체</b>하고 가져올까요?</span>
+            <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+              <button className="btn btn-primary btn-sm" onClick={acceptShare}>가져오기</button>
+              <button className="btn btn-sm" onClick={dismissShare}>취소</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main style={{ flex: 1 }} className="app-main">
         <Outlet />
       </main>
 
-      <footer style={{ borderTop: "1px solid var(--line)", marginTop: 40 }}>
+      <footer style={{ borderTop: "1px solid var(--line)", marginTop: 40 }} className="app-footer">
         <div className="container muted" style={{ padding: "22px 20px", fontSize: 13, display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "space-between" }}>
           <span>삿포로 여행 가이드 · 2026.7.9 – 7.13</span>
           <span>메모·북마크는 이 브라우저에 저장됩니다 · 정보 탭에서 백업</span>
         </div>
       </footer>
 
+      {/* 모바일 하단 탭바 */}
+      <nav className="bottombar">
+        {BOTTOM.map((n) => (
+          <NavLink key={n.to} to={n.to} end={(n as any).end}
+            style={({ isActive }) => ({
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+              flex: 1, padding: "7px 0", textDecoration: "none", fontSize: 11, fontWeight: 600,
+              color: isActive ? "var(--accent-ink)" : "var(--ink-faint)",
+            })}>
+            <span style={{ fontSize: 19 }}>{n.icon}</span>
+            {n.label}
+          </NavLink>
+        ))}
+      </nav>
+
       <style>{`
+        .bottombar { display: none; }
         @media (max-width: 720px) {
           .nav-label { display:none; }
-          .topnav a { padding:8px 10px !important; }
+          .topnav { display:none !important; }
+          .app-footer { display:none; }
+          .app-main { padding-bottom: 70px; }
+          .bottombar {
+            display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 600;
+            background: color-mix(in srgb, var(--bg-elev) 94%, transparent);
+            backdrop-filter: saturate(1.4) blur(10px);
+            border-top: 1px solid var(--line);
+            padding-bottom: env(safe-area-inset-bottom);
+          }
         }
       `}</style>
     </div>

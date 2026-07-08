@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Bookmark, ShoppingItem, Day, Block, BudgetFixed, BudgetCat, TourItem, Insurer } from "../types";
+import type { Bookmark, ShoppingItem, Day, Block, BudgetFixed, BudgetCat, TourItem, Insurer, ExpenseEntry } from "../types";
 import { deleteImage } from "../lib/db";
 import * as seed from "../data";
 
@@ -13,6 +13,7 @@ interface State {
   // 사용자 생성
   bookmarks: Bookmark[];
   shopping: ShoppingItem[];
+  expenses: ExpenseEntry[];
   checked: Record<string, boolean>;
   theme: "light" | "dark";
 
@@ -35,6 +36,11 @@ interface State {
   updateShopping: (id: string, patch: Partial<ShoppingItem>) => void;
   removeShopping: (id: string) => void;
   toggleBought: (id: string) => void;
+
+  // --- expenses ---
+  addExpense: (e: Omit<ExpenseEntry, "id" | "createdAt">) => void;
+  updateExpense: (id: string, patch: Partial<ExpenseEntry>) => void;
+  removeExpense: (id: string) => void;
 
   // --- packing ---
   toggleCheck: (key: string) => void;
@@ -88,6 +94,7 @@ export const useStore = create<State>()(
     (set, get) => ({
       bookmarks: [],
       shopping: [],
+      expenses: [],
       checked: {},
       theme: "light",
       ...seededDefaults(),
@@ -113,6 +120,13 @@ export const useStore = create<State>()(
       },
       toggleBought: (id) =>
         set((s) => ({ shopping: s.shopping.map((x) => (x.id === id ? { ...x, bought: !x.bought } : x)) })),
+
+      addExpense: (e) =>
+        set((s) => ({ expenses: [{ ...e, id: uid(), createdAt: Date.now() }, ...s.expenses] })),
+      updateExpense: (id, patch) =>
+        set((s) => ({ expenses: s.expenses.map((x) => (x.id === id ? { ...x, ...patch } : x)) })),
+      removeExpense: (id) =>
+        set((s) => ({ expenses: s.expenses.filter((x) => x.id !== id) })),
 
       toggleCheck: (key) => set((s) => ({ checked: { ...s.checked, [key]: !s.checked[key] } })),
       addPackingItem: (cat, item) =>
@@ -168,6 +182,7 @@ export const useStore = create<State>()(
         set((s) => ({
           bookmarks: data.bookmarks ?? s.bookmarks,
           shopping: data.shopping ?? s.shopping,
+          expenses: data.expenses ?? s.expenses,
           checked: data.checked ?? s.checked,
           itinerary: data.itinerary ?? s.itinerary,
           packing: data.packing ?? s.packing,

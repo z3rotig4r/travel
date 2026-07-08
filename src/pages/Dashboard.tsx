@@ -3,12 +3,16 @@ import { Section } from "../components/ui";
 import { trip, budget } from "../data";
 import { useStore } from "../store";
 import { useExchangeRate, fmtRate100 } from "../lib/fx";
+import { useWeather } from "../lib/weather";
+import { WeatherBadge } from "../components/WeatherBadge";
+import { dateKeyForDay } from "../lib/time";
 
 const won = (n: number) => n.toLocaleString("ko-KR") + "원";
 
 export function Dashboard() {
   const itinerary = useStore((s) => s.itinerary);
   const fx = useExchangeRate();
+  const weather = useWeather();
   const rateWhen = fx.updatedAt ? new Date(fx.updatedAt).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
   return (
     <>
@@ -63,14 +67,17 @@ export function Dashboard() {
       <Section>
         <h2 style={{ fontSize: 22, marginBottom: 16 }}>일정 한눈에</h2>
         <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))" }}>
-          {itinerary.map((d) => (
+          {itinerary.map((d, i) => (
             <Link key={d.day} to={`/schedule?day=${d.day}`} className="card fade-up"
               style={{ padding: 18, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span className="chip">{d.day}일차</span>
                 <span className="muted" style={{ fontSize: 13, fontWeight: 600 }}>{d.date}</span>
               </div>
-              <div style={{ fontFamily: "var(--font-serif)", fontSize: 18 }}>{d.theme}</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <div style={{ fontFamily: "var(--font-serif)", fontSize: 18 }}>{d.theme}</div>
+                <WeatherBadge w={weather.byDate[dateKeyForDay(trip.startDate, i)]} />
+              </div>
               <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.7 }}>
                 {d.blocks.slice(0, 3).map((b, i) => (
                   <div key={i} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
